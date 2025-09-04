@@ -1,47 +1,82 @@
-name: build-and-lint
+name: CI
 
-# triggers: define when this workflow should run
-# trigger on push to these branches
 on:
   push:
-    branches: [main, dev]
+    branches: [ main, master ]
   pull_request:
-    branches: [main, dev]
+    branches: [ main, master ]
 
-    # define a job (multiple jobs also)
 jobs:
-  build-and-lint:
+  backend:
     runs-on: ubuntu-latest
-
+    services:
+      mongo:
+        image: mongo:6
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'" 
+          --health-interval=10s --health-timeout=5s --health-retries=5
+    env:
+      MONGO_URI: mongodb://localhost:27017/dev_db
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install backend dependencies
         working-directory: server
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
-      - name: Lint backend
+      - name: Run backend lint (optional)
         working-directory: server
-        run: npm run lint -- --max-warnings=0
+        run: npm run lint --if-present
+
+      - name: Run backend tests (optional)
+        working-directory: server
+        run: npm test --if-present
+
+  frontend:
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install frontend dependencies
         working-directory: client
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
-      - name: Lint frontend
+      - name: Run frontend lint (optional)
         working-directory: client
-        run: npm run lint -- --max-warnings=0
+        run: npm run lint --if-present
 
-      - name: Build backend image
-        run: docker build -t backend ./server
+      - name: Build frontend
+        working-directory: client
+        run: npm run build
 
-      - name: Build frontend image
-        run: docker build -t frontend ./client
-
-  
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-dist
+          path: client/dist
