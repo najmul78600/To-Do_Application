@@ -1,13 +1,9 @@
-name: Lint Check
-
-on:
-  pull_request:
-  push:
-    branches: [ main, develop ]
-
 jobs:
   eslint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./server  # 👈 run everything inside /server
 
     steps:
       - name: Checkout repository
@@ -18,9 +14,10 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'  # 👈 adjust
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run ESLint
         run: npx eslint . --ext .js,.ts,.jsx,.tsx
