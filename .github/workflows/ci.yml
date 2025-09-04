@@ -1,35 +1,45 @@
-# ...new file...
-name: Lint & Format Check
+name: build-and-lint
 
+# triggers: define when this workflow should run
+# trigger on push to these branches
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, dev]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, dev]
 
+    # define a job (multiple jobs also)
 jobs:
-  lint:
+  build-and-lint:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
 
-      - name: Lint & format check - server
+      - name: Install backend dependencies
         working-directory: server
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-          npx eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0
-          npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,md,html}"
+        run: npm ci
 
-      - name: Lint & format check - client
+      - name: Lint backend
+        working-directory: server
+        run: npm run lint -- --max-warnings=0
+
+      - name: Install frontend dependencies
         working-directory: client
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-          npx eslint . --ext .js,.jsx,.ts,.tsx --max-warnings 0
-          npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,md,html}"
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: client
+        run: npm run lint -- --max-warnings=0
+
+      - name: Build backend image
+        run: docker build -t backend ./server
+
+      - name: Build frontend image
+        run: docker build -t frontend ./client
