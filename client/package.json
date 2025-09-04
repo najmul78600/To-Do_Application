@@ -3140,5 +3140,8 @@
         "url": "https://github.com/sponsors/sindresorhus"
       }
     }
+  },
+  "devDependencies": {
+    "eslint": "^9.34.0"
   }
 }
